@@ -1,5 +1,7 @@
 # Handwritten Arabic Numeral Recognition
 
+![Web App Demo](outputs/Wep%20Demo.gif)
+
 ## Overview
 
 This project develops and evaluates a complete machine learning pipeline for classifying handwritten Arabic-Indic numerals (digits 0 through 9). It covers the full workflow from raw image loading and data splitting through classical baselines, a custom convolutional neural network with augmentation, model evaluation, and a live web interface for real-time prediction.
