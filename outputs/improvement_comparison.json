@@ -1,0 +1,12 @@
+{
+  "baseline_single_cnn_aug": 0.9886,
+  "individual_accs": [
+    0.9864575908766928,
+    0.9871703492516037,
+    0.9857448325017819
+  ],
+  "mean_individual_acc": 0.9864575908766927,
+  "best_individual_acc": 0.9871703492516037,
+  "ensemble_no_tta_acc": 0.9871703492516037,
+  "ensemble_tta_acc": 0.9864575908766928
+}

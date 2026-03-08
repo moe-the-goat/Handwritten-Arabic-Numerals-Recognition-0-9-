@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arabic Numeral Recognition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #06080d;
+    --bg-subtle:   #0c0f18;
+    --surface:     #111623;
+    --surface-2:   #171d2e;
+    --surface-3:   #1e2538;
+    --border:      rgba(255,255,255,.06);
+    --border-focus:rgba(99,140,255,.4);
+    --text:        #e8eaf0;
+    --text-2:      #a0a6b8;
+    --text-3:      #6b7185;
+    --primary:     #638cff;
+    --primary-dim: rgba(99,140,255,.15);
+    --primary-glow:rgba(99,140,255,.25);
+    --success:     #34d399;
+    --success-dim: rgba(52,211,153,.12);
+    --error-dim:   rgba(248,113,113,.12);
+    --error:       #f87171;
+    --radius:      14px;
+    --radius-sm:   8px;
+    --radius-xs:   5px;
+    --font:        'Inter', system-ui, -apple-system, sans-serif;
+    --transition:  .25s cubic-bezier(.4,0,.2,1);
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Background pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,140,255,.08), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(52,211,153,.04), transparent);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ---- NAV ---- */
+  .nav {
+    flex-shrink: 0;
+    z-index: 100;
+    background: rgba(6,8,13,.82);
+    backdrop-filter: blur(20px) saturate(1.4);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+  }
+  .nav-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 44px;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .nav-logo {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--primary), #34d399);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 13px;
+    color: #fff;
+  }
+  .nav-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -.02em;
+  }
+  .nav-badge {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--primary);
+    background: var(--primary-dim);
+    padding: 2px 7px;
+    border-radius: 20px;
+  }
+  .nav-center {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .nav-stat {
+    text-align: center;
+    line-height: 1.2;
+  }
+  .nav-stat-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .nav-stat-label {
+    font-size: 9px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .nav-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .nav-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-3);
+    transition: background var(--transition);
+  }
+  .nav-dot.live { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .kbd-hints {
+    display: flex;
+    gap: 10px;
+  }
+  .kbd-hint {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-3);
+  }
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 4px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-2);
+    font-family: var(--font);
+  }
+
+  /* ---- MAIN LAYOUT ---- */
+  .main {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  /* ---- CARDS ---- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .card-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-header-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-header-icon {
+    width: 15px;
+    height: 15px;
+    opacity: .5;
+  }
+  .card-body {
+    flex: 1;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* ---- COLUMN 1: CANVAS ---- */
+  .col-canvas {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .card-canvas {
+    flex: 1;
+    min-height: 0;
+  }
+  .card-canvas .card-body {
+    gap: 10px;
+  }
+
+  /* ---- CANVAS ---- */
+  .canvas-area {
+    position: relative;
+    flex: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #ffffff;
+    border: 2px solid var(--border);
+    cursor: crosshair;
+    transition: border-color var(--transition);
+    min-height: 0;
+  }
+  .canvas-area:hover,
+  .canvas-area.active {
+    border-color: var(--border-focus);
+  }
+  .canvas-area canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+  .canvas-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transition: opacity .3s;
+    gap: 6px;
+  }
+  .canvas-hint.hidden { opacity: 0; }
+  .canvas-hint-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .canvas-hint-icon svg { width: 18px; height: 18px; stroke: #999; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .canvas-hint-text { color: #aaa; font-size: 12px; }
+  .canvas-hint-sub { color: #ccc; font-size: 10px; }
+
+  /* Controls row */
+  .controls-row {
+    flex-shrink: 0;
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: -.01em;
+  }
+  .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 2px 12px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  .btn-primary:hover { background: #5580f0; box-shadow: 0 4px 20px var(--primary-glow); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface-3); color: var(--text); }
+
+  .btn-icon {
+    flex: 0 0 36px;
+    width: 36px;
+    padding: 0;
+  }
+
+  /* Info strip */
+  .info-strip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+  .info-preview {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    background: #1a1a1a;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .info-preview.visible { opacity: 1; }
+  .info-text { flex: 1; }
+  .info-text-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
+  .info-text-value { font-size: 11px; color: var(--text-2); margin-top: 1px; }
+
+  /* Status line */
+  .status-line {
+    font-size: 11px;
+    text-align: center;
+    min-height: 16px;
+    color: var(--text-3);
+    flex-shrink: 0;
+    transition: color var(--transition);
+  }
+  .status-line.error { color: var(--error); }
+  .status-line.ok { color: var(--success); }
+
+  /* ---- COLUMN 2: RESULT + REFERENCE + HISTORY ---- */
+  .col-result {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  /* Predicted digit hero */
+  .result-hero {
+    text-align: center;
+    padding: 16px 14px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    position: relative;
+    overflow: hidden;
+  }
+  .result-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, var(--primary-dim), transparent 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .5s;
+  }
+  .result-hero.active::before { opacity: 1; }
+
+  .result-digit {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text);
+    opacity: 0;
+    transform: scale(.6) translateY(8px);
+    transition: all .4s cubic-bezier(.34,1.56,.64,1);
+    position: relative;
+  }
+  .result-digit.show {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  .result-conf {
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity .3s .2s;
+  }
+  .result-conf.show { opacity: 1; }
+  .result-conf.high { color: var(--success); background: var(--success-dim); }
+  .result-conf.medium { color: #fbbf24; background: rgba(251,191,36,.12); }
+  .result-conf.low { color: var(--error); background: var(--error-dim); }
+
+  .result-conf-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Placeholder state */
+  .result-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    text-align: center;
+    gap: 10px;
+  }
+  .result-placeholder-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .result-placeholder-icon svg { width: 20px; height: 20px; stroke: var(--text-3); fill: none; stroke-width: 1.5; }
+  .result-placeholder-msg { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+
+  /* Reference Samples */
+  .ref-row {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .ref-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px;
+    background: var(--surface-2);
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    transition: border-color var(--transition);
+  }
+  .ref-chip:hover { border-color: var(--border-focus); }
+  .ref-chip img {
+    width: 28px;
+    height: 28px;
+    border-radius: 3px;
+    image-rendering: pixelated;
+    background: #fff;
+  }
+  .ref-chip span {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-3);
+  }
+
+  /* History (compact chip layout) */
+  .history-feed {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .history-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 5px;
+    background: var(--surface-2);
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    animation: fadeSlideIn .3s both;
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .history-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 3px;
+    background: #1a1a1a;
+    image-rendering: pixelated;
+  }
+  .history-digit { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1; }
+  .history-conf { font-size: 9px; color: var(--text-3); line-height: 1; }
+  .history-empty { text-align: center; font-size: 11px; color: var(--text-3); padding: 14px; width: 100%; }
+
+  /* ---- COLUMN 3: PROBABILITY ---- */
+  .col-prob {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Probability Chart */
+  .prob-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .prob-item {
+    display: grid;
+    grid-template-columns: 22px 1fr 44px;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-radius: var(--radius-xs);
+    transition: background var(--transition);
+  }
+  .prob-item.highlight {
+    background: var(--surface-3);
+    padding: 5px 8px;
+    margin: 0 -8px;
+    grid-template-columns: 22px 1fr 44px;
+  }
+
+  .prob-digit {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-2);
+  }
+  .prob-item.highlight .prob-digit { color: var(--success); }
+
+  .prob-bar-track {
+    height: 7px;
+    background: var(--surface-3);
+    border-radius: 3.5px;
+    overflow: hidden;
+  }
+  .prob-bar-fill {
+    height: 100%;
+    border-radius: 3.5px;
+    width: 0%;
+    transition: width .6s cubic-bezier(.22,1,.36,1);
+    background: var(--surface-3);
+  }
+  .prob-item .prob-bar-fill { background: linear-gradient(90deg, rgba(99,140,255,.4), rgba(99,140,255,.7)); }
+  .prob-item.highlight .prob-bar-fill { background: linear-gradient(90deg, rgba(52,211,153,.5), rgba(52,211,153,.9)); }
+
+  .prob-pct {
+    font-size: 11px;
+    font-weight: 600;
+    text-align: right;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .prob-item.highlight .prob-pct { color: var(--success); }
+
+  /* ---- SPINNER ---- */
+  .spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--surface-3);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 960px) {
+    .main {
+      grid-template-columns: 1fr 1fr;
+    }
+    .col-prob { grid-column: 1 / -1; }
+    .nav-center { display: none; }
+  }
+  @media (max-width: 640px) {
+    html, body { overflow: auto; height: auto; }
+    .main {
+      grid-template-columns: 1fr;
+    }
+    .col-prob { grid-column: auto; }
+    .kbd-hints { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="#">
+      <div class="nav-logo">&#1632;</div>
+      <span class="nav-title">Arabic Numeral Recognition</span>
+      <span class="nav-badge">CNN v1.0</span>
+    </a>
+    <div class="nav-center">
+      <div class="nav-stat">
+        <div class="nav-stat-value">98.86%</div>
+        <div class="nav-stat-label">Accuracy</div>
+      </div>
+      <div class="nav-stat">
+        <div class="nav-stat-value">9,350</div>
+        <div class="nav-stat-label">Images</div>
+      </div>
+      <div class="nav-stat">
+        <div class="nav-stat-value">10</div>
+        <div class="nav-stat-label">Classes</div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="kbd-hints">
+        <div class="kbd-hint"><span class="kbd">Enter</span> Predict</div>
+        <div class="kbd-hint"><span class="kbd">Esc</span> Clear</div>
+      </div>
+      <div class="nav-status" id="serverStatus">
+        <div class="nav-dot" id="statusDot"></div>
+        <span id="statusText">Connecting...</span>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- Column 1: Drawing Canvas -->
+  <div class="col-canvas">
+    <div class="card card-canvas">
+      <div class="card-header">
+        <div class="card-header-title">
+          <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+          Drawing Canvas
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="canvas-area" id="canvasArea">
+          <canvas id="drawCanvas" width="720" height="720"></canvas>
+          <div class="canvas-hint" id="canvasHint">
+            <div class="canvas-hint-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+            </div>
+            <div class="canvas-hint-text">Draw a digit here</div>
+            <div class="canvas-hint-sub">Mouse or touch</div>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <button class="btn btn-primary" id="btnPredict">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Predict
+          </button>
+          <button class="btn btn-secondary" id="btnClear">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+            Clear
+          </button>
+          <button class="btn btn-secondary btn-icon" id="btnUndo" title="Undo last stroke (Ctrl+Z)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10h10a5 5 0 015 5v0a5 5 0 01-5 5H8"/><polyline points="7 14 3 10 7 6"/></svg>
+          </button>
+        </div>
+
+        <div class="info-strip">
+          <img class="info-preview" id="previewImg" alt="Model input" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+          <div class="info-text">
+            <div class="info-text-label">Model Input</div>
+            <div class="info-text-value">28 x 28 grayscale, normalized</div>
+          </div>
+        </div>
+
+        <div class="status-line" id="statusLine"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column 2: Result + Reference + History -->
+  <div class="col-result">
+    <!-- Prediction Result -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Prediction Result
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="resultPlaceholder">
+          <div class="result-placeholder">
+            <div class="result-placeholder-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+            </div>
+            <div class="result-placeholder-msg">Draw a digit and press Predict</div>
+          </div>
+        </div>
+        <div id="resultContent" style="display:none">
+          <div class="result-hero" id="resultHero">
+            <div class="result-digit" id="resultDigit">0</div>
+            <div class="result-conf" id="resultConf">
+              <div class="result-conf-dot"></div>
+              <span id="resultConfText">99.8%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reference Samples -->
+    <div class="card" id="refCard" style="display:none">
+      <div class="card-header">
+        <div class="card-header-title">
+          <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          Reference Samples
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="ref-row" id="refGrid"></div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card" style="flex:1;min-height:0">
+      <div class="card-header">
+        <div class="card-header-title">
+          <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          History
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="history-feed" id="historyFeed">
+          <div class="history-empty">No predictions yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column 3: Probability Distribution -->
+  <div class="col-prob">
+    <div class="card" style="flex:1;min-height:0">
+      <div class="card-header">
+        <div class="card-header-title">
+          <svg class="card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Confidence Distribution
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="prob-chart" id="probChart"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* ===== Canvas Setup ===== */
+const canvas = document.getElementById('drawCanvas');
+const ctx    = canvas.getContext('2d');
+const hint   = document.getElementById('canvasHint');
+const area   = document.getElementById('canvasArea');
+
+let drawing  = false;
+let hasDrawn = false;
+let strokes  = [];
+let currentStroke = [];
+
+function clearCanvas() {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  hasDrawn = false;
+  strokes = [];
+  currentStroke = [];
+  hint.classList.remove('hidden');
+  area.classList.remove('active');
+  document.getElementById('previewImg').classList.remove('visible');
+  document.getElementById('resultPlaceholder').style.display = '';
+  document.getElementById('resultContent').style.display = 'none';
+  document.getElementById('resultHero').classList.remove('active');
+  setStatus('');
+  buildEmptyChart();
+}
+
+function redrawStrokes() {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const stroke of strokes) {
+    if (stroke.length === 0) continue;
+    ctx.beginPath();
+    ctx.moveTo(stroke[0].x, stroke[0].y);
+    for (let i = 1; i < stroke.length; i++) {
+      ctx.lineTo(stroke[i].x, stroke[i].y);
+    }
+    ctx.stroke();
+  }
+}
+
+clearCanvas();
+
+ctx.strokeStyle = '#777777';
+ctx.lineWidth = 24;
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width;
+  const sy = canvas.height / rect.height;
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  drawing = true;
+  hasDrawn = true;
+  hint.classList.add('hidden');
+  area.classList.add('active');
+  const p = getPos(e);
+  currentStroke = [p];
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(p.x + 0.1, p.y + 0.1);
+  ctx.stroke();
+}
+
+function moveDraw(e) {
+  e.preventDefault();
+  if (!drawing) return;
+  const p = getPos(e);
+  currentStroke.push(p);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+}
+
+function stopDraw(e) {
+  e.preventDefault();
+  if (!drawing) return;
+  drawing = false;
+  if (currentStroke.length > 0) {
+    strokes.push([...currentStroke]);
+    currentStroke = [];
+  }
+}
+
+canvas.addEventListener('mousedown',  startDraw);
+canvas.addEventListener('mousemove',  moveDraw);
+canvas.addEventListener('mouseup',    stopDraw);
+canvas.addEventListener('mouseleave', stopDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove',  moveDraw,  { passive: false });
+canvas.addEventListener('touchend',   stopDraw);
+
+/* ===== Undo ===== */
+document.getElementById('btnUndo').addEventListener('click', () => {
+  if (strokes.length === 0) return;
+  strokes.pop();
+  redrawStrokes();
+  if (strokes.length === 0) {
+    hasDrawn = false;
+    hint.classList.remove('hidden');
+    area.classList.remove('active');
+  }
+});
+
+/* ===== Build empty probability chart ===== */
+function buildEmptyChart() {
+  const container = document.getElementById('probChart');
+  container.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const item = document.createElement('div');
+    item.className = 'prob-item';
+    item.innerHTML = `
+      <div class="prob-digit">${i}</div>
+      <div class="prob-bar-track"><div class="prob-bar-fill" style="width:0%"></div></div>
+      <div class="prob-pct">--</div>
+    `;
+    container.appendChild(item);
+  }
+}
+buildEmptyChart();
+
+/* ===== Server health check ===== */
+(async function checkServer() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  try {
+    const r = await fetch('/health');
+    if (r.ok) {
+      dot.classList.add('live');
+      txt.textContent = 'Model ready';
+    } else {
+      txt.textContent = 'Server error';
+    }
+  } catch {
+    txt.textContent = 'Offline';
+  }
+})();
+
+/* ===== Load reference samples ===== */
+(async function loadSamples() {
+  try {
+    const resp = await fetch('/samples');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const grid = document.getElementById('refGrid');
+    for (let i = 0; i < 10; i++) {
+      const chip = document.createElement('div');
+      chip.className = 'ref-chip';
+      const img = document.createElement('img');
+      img.src = data[String(i)];
+      img.alt = 'Digit ' + i;
+      const lbl = document.createElement('span');
+      lbl.textContent = i;
+      chip.append(img, lbl);
+      grid.appendChild(chip);
+    }
+    document.getElementById('refCard').style.display = '';
+  } catch {}
+})();
+
+/* ===== Status ===== */
+function setStatus(msg, cls) {
+  const el = document.getElementById('statusLine');
+  el.className = 'status-line' + (cls ? ' ' + cls : '');
+  el.innerHTML = msg;
+}
+
+/* ===== Prediction History ===== */
+const history = [];
+
+function addToHistory(data) {
+  history.unshift(data);
+  if (history.length > 20) history.pop();
+  const feed = document.getElementById('historyFeed');
+  feed.innerHTML = '';
+  for (const item of history) {
+    const el = document.createElement('div');
+    el.className = 'history-item';
+    const conf = (item.confidence * 100).toFixed(1);
+    el.innerHTML = `
+      <img class="history-img" src="${item.processed_image}" alt="digit">
+      <div class="history-digit">${item.predicted_digit}</div>
+      <div class="history-conf">${conf}%</div>
+    `;
+    feed.appendChild(el);
+  }
+}
+
+/* ===== Predict ===== */
+const btnPredict = document.getElementById('btnPredict');
+const btnClear   = document.getElementById('btnClear');
+
+btnClear.addEventListener('click', clearCanvas);
+
+btnPredict.addEventListener('click', async () => {
+  if (!hasDrawn) {
+    setStatus('Please draw a digit first.', 'error');
+    return;
+  }
+  btnPredict.disabled = true;
+  setStatus('<span class="spinner"></span> Analyzing...', '');
+
+  const dataURL = canvas.toDataURL('image/png');
+
+  try {
+    const resp = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataURL }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.detail || 'Server error');
+    }
+    const data = await resp.json();
+    showResult(data);
+    addToHistory(data);
+    setStatus('', 'ok');
+  } catch (err) {
+    setStatus('Error: ' + err.message, 'error');
+  } finally {
+    btnPredict.disabled = false;
+  }
+});
+
+/* ===== Show Result ===== */
+function showResult(data) {
+  document.getElementById('resultPlaceholder').style.display = 'none';
+  document.getElementById('resultContent').style.display = '';
+
+  const hero = document.getElementById('resultHero');
+  hero.classList.add('active');
+
+  const digitEl = document.getElementById('resultDigit');
+  digitEl.textContent = data.predicted_digit;
+  digitEl.classList.remove('show');
+  requestAnimationFrame(() => requestAnimationFrame(() => digitEl.classList.add('show')));
+
+  const confVal = data.confidence * 100;
+  const confText = confVal.toFixed(1) + '% confidence';
+  const confEl = document.getElementById('resultConf');
+  const confTxt = document.getElementById('resultConfText');
+  confTxt.textContent = confText;
+  confEl.classList.remove('show', 'high', 'medium', 'low');
+  confEl.classList.add(confVal >= 90 ? 'high' : confVal >= 60 ? 'medium' : 'low');
+  requestAnimationFrame(() => requestAnimationFrame(() => confEl.classList.add('show')));
+
+  // Preview
+  const preview = document.getElementById('previewImg');
+  preview.src = data.processed_image;
+  preview.classList.add('visible');
+
+  // Probability chart
+  const container = document.getElementById('probChart');
+  container.innerHTML = '';
+  const topDigit = data.predicted_digit;
+
+  for (let i = 0; i < 10; i++) {
+    const prob = data.probabilities[String(i)];
+    const pct = (prob * 100).toFixed(1);
+    const isTop = i === topDigit;
+
+    const item = document.createElement('div');
+    item.className = 'prob-item' + (isTop ? ' highlight' : '');
+    item.innerHTML = `
+      <div class="prob-digit">${i}</div>
+      <div class="prob-bar-track"><div class="prob-bar-fill"></div></div>
+      <div class="prob-pct">${pct}%</div>
+    `;
+    container.appendChild(item);
+
+    requestAnimationFrame(() => {
+      item.querySelector('.prob-bar-fill').style.width = Math.max(prob * 100, 0.4) + '%';
+    });
+  }
+}
+
+/* ===== Keyboard Shortcuts ===== */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') btnPredict.click();
+  if (e.key === 'Escape') btnClear.click();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    e.preventDefault();
+    document.getElementById('btnUndo').click();
+  }
+});
+</script>
+</body>
+</html>
